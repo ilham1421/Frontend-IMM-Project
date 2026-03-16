@@ -1,0 +1,250 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Plus, Pencil, Trash2, GripVertical, CalendarRange } from "lucide-react";
+import { authFetch } from "@/lib/authFetch";
+
+type Kegiatan = {
+  id: number;
+  namaKegiatan: string;
+  singkatan: string;
+};
+
+type Persyaratan = {
+  id: number;
+  kegiatanId: number;
+  nama: string;
+  jenis: "file" | "teks" | "checkbox";
+  wajib: boolean;
+};
+
+export default function ManajemenPersyaratanPage() {
+  const [kegiatanList, setKegiatanList] = useState<Kegiatan[]>([]);
+  const [selectedKegiatan, setSelectedKegiatan] = useState<number | null>(null);
+  const [items, setItems] = useState<Persyaratan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/kegiatan")
+      .then((r) => r.json())
+      .then((data) => {
+        setKegiatanList(data);
+        if (data.length > 0) setSelectedKegiatan(data[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fetchPersyaratan = () => {
+    if (!selectedKegiatan) return;
+    fetch(`/api/persyaratan?kegiatanId=${selectedKegiatan}`)
+      .then((res) => res.json())
+      .then((data) => setItems(data))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (selectedKegiatan) fetchPersyaratan();
+  }, [selectedKegiatan]);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({ nama: "", jenis: "file" as Persyaratan["jenis"], wajib: true });
+
+  const handleAdd = async () => {
+    if (!formData.nama.trim() || !selectedKegiatan) return;
+    if (editId !== null) {
+      const res = await authFetch(`/api/persyaratan/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) fetchPersyaratan();
+      setEditId(null);
+    } else {
+      const res = await authFetch("/api/persyaratan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, kegiatanId: selectedKegiatan }),
+      });
+      if (res.ok) fetchPersyaratan();
+    }
+    setFormData({ nama: "", jenis: "file", wajib: true });
+    setShowForm(false);
+  };
+
+  const handleEdit = (item: Persyaratan) => {
+    setFormData({ nama: item.nama, jenis: item.jenis, wajib: item.wajib });
+    setEditId(item.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    await authFetch(`/api/persyaratan/${id}`, { method: "DELETE" });
+    fetchPersyaratan();
+  };
+
+  if (loading) {
+    return <div className="p-6 text-imm-gray-dark">Memuat...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-imm-black">Manajemen Persyaratan</h1>
+          <p className="text-sm text-imm-gray-dark">Atur persyaratan pendaftaran per kegiatan</p>
+        </div>
+        {selectedKegiatan && (
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setEditId(null);
+              setFormData({ nama: "", jenis: "file", wajib: true });
+            }}
+            className="inline-flex items-center gap-2 bg-imm-red text-white font-semibold px-4 py-2.5 rounded-xl hover:bg-imm-red-dark transition-colors text-sm"
+          >
+            <Plus size={18} />
+            Tambah Persyaratan
+          </button>
+        )}
+      </div>
+
+      {/* Pilih Kegiatan */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <label className="block text-sm font-medium text-imm-black mb-2">
+          <CalendarRange size={16} className="inline mr-1" />
+          Pilih Kegiatan
+        </label>
+        {kegiatanList.length === 0 ? (
+          <p className="text-sm text-imm-gray-dark">Belum ada kegiatan</p>
+        ) : (
+          <select
+            value={selectedKegiatan ?? ""}
+            onChange={(e) => setSelectedKegiatan(Number(e.target.value))}
+            className="w-full md:w-96 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
+          >
+            {kegiatanList.map((kg) => (
+              <option key={kg.id} value={kg.id}>
+                {kg.namaKegiatan} ({kg.singkatan})
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Form Tambah/Edit */}
+      {showForm && selectedKegiatan && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h3 className="font-semibold text-imm-black mb-4">
+            {editId !== null ? "Edit Persyaratan" : "Tambah Persyaratan Baru"}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium text-imm-black mb-1">Nama Persyaratan</label>
+              <input
+                type="text"
+                value={formData.nama}
+                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
+                placeholder="Contoh: Scan KTA"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-imm-black mb-1">Jenis Input</label>
+              <select
+                value={formData.jenis}
+                onChange={(e) => setFormData({ ...formData, jenis: e.target.value as Persyaratan["jenis"] })}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
+              >
+                <option value="file">File Upload</option>
+                <option value="teks">Teks</option>
+                <option value="checkbox">Checkbox</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-imm-black mb-1">Wajib</label>
+              <select
+                value={formData.wajib ? "ya" : "tidak"}
+                onChange={(e) => setFormData({ ...formData, wajib: e.target.value === "ya" })}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
+              >
+                <option value="ya">Ya (Wajib)</option>
+                <option value="tidak">Tidak (Opsional)</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={handleAdd}
+              className="bg-imm-red text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-imm-red-dark transition-colors text-sm"
+            >
+              {editId !== null ? "Update" : "Simpan"}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setEditId(null); }}
+              className="border border-gray-300 text-imm-gray-dark font-semibold px-5 py-2.5 rounded-xl hover:bg-imm-gray transition-colors text-sm"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Daftar Persyaratan */}
+      {selectedKegiatan && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="font-semibold text-imm-black">Daftar Persyaratan ({items.length})</h3>
+          </div>
+          {items.length === 0 ? (
+            <div className="p-8 text-center text-imm-gray-dark text-sm">
+              Belum ada persyaratan untuk kegiatan ini
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between px-6 py-4 hover:bg-imm-gray/50">
+                  <div className="flex items-center gap-3">
+                    <GripVertical size={16} className="text-gray-300" />
+                    <div>
+                      <p className="font-medium text-imm-black text-sm">{item.nama}</p>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          {item.jenis === "file" ? "File" : item.jenis === "teks" ? "Teks" : "Checkbox"}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            item.wajib ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {item.wajib ? "Wajib" : "Opsional"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEdit(item)}
+                      className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
+                      aria-label="Edit"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors"
+                      aria-label="Hapus"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
