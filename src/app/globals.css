@@ -31,3 +31,47 @@ body {
   background: #C41E3A;
   border-radius: 3px;
 }
+
+/* Subtle bounce animation for success icon */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
+/* Toast slide in */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  @page {
+    margin: 10mm;
+    size: A4;
+  }
+
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Preserve all backgrounds and colors in print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  main {
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

@@ -64,13 +64,13 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-imm-black mb-1">
+              <label htmlFor="username" className="block text-sm font-medium text-imm-black mb-1">
                 Username
               </label>
               <div className="relative">
@@ -79,6 +79,7 @@ export default function LoginPage() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -90,7 +91,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-imm-black mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-imm-black mb-1">
                 Password
               </label>
               <div className="relative">
@@ -99,6 +100,7 @@ export default function LoginPage() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

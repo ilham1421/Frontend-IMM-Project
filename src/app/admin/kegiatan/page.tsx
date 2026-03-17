@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Kegiatan = {
   id: number;
@@ -61,6 +63,8 @@ export default function AdminKegiatanPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [formData, setFormData] = useState(emptyForm);
   const [adminKomisariat, setAdminKomisariat] = useState("");
+  const { showToast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -77,7 +81,7 @@ export default function AdminKegiatanPage() {
         setKegiatanList(kg);
         setKomisariatList(km);
       })
-      .catch(() => {})
+      .catch(() => showToast("Gagal memuat data", "error"))
       .finally(() => setLoading(false));
   };
 
@@ -117,31 +121,38 @@ export default function AdminKegiatanPage() {
 
   const handleSave = async () => {
     if (!formData.namaKegiatan.trim() || !formData.singkatan.trim()) {
-      alert("Nama kegiatan dan singkatan wajib diisi");
+      showToast("Nama kegiatan dan singkatan wajib diisi", "warning");
       return;
     }
 
     const myKomId = getMyKomisariatId();
     if (!myKomId) return;
 
-    if (editId !== null) {
-      await authFetch(`/api/kegiatan/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-    } else {
-      await authFetch("/api/kegiatan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, komisariatIds: [myKomId] }),
-      });
+    try {
+      const res = editId !== null
+        ? await authFetch(`/api/kegiatan/${editId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+          })
+        : await authFetch("/api/kegiatan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...formData, komisariatIds: [myKomId] }),
+          });
+      if (res.ok) {
+        showToast(editId ? "Kegiatan berhasil diperbarui" : "Kegiatan berhasil ditambahkan", "success");
+        setShowForm(false);
+        setEditId(null);
+        setFormData(emptyForm);
+        fetchData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Gagal menyimpan kegiatan", "error");
+      }
+    } catch {
+      showToast("Gagal menyimpan kegiatan", "error");
     }
-
-    setShowForm(false);
-    setEditId(null);
-    setFormData(emptyForm);
-    fetchData();
   };
 
   const handleEdit = (kg: Kegiatan) => {
@@ -161,18 +172,36 @@ export default function AdminKegiatanPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus kegiatan ini?")) return;
-    await authFetch(`/api/kegiatan/${id}`, { method: "DELETE" });
-    fetchData();
+    setDeleteTarget(null);
+    try {
+      const res = await authFetch(`/api/kegiatan/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showToast("Kegiatan berhasil dihapus", "success");
+        fetchData();
+      } else {
+        showToast("Gagal menghapus kegiatan", "error");
+      }
+    } catch {
+      showToast("Gagal menghapus kegiatan", "error");
+    }
   };
 
   const handleToggleStatus = async (kg: Kegiatan) => {
-    await authFetch(`/api/kegiatan/${kg.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ statusBuka: !kg.statusBuka }),
-    });
-    fetchData();
+    try {
+      const res = await authFetch(`/api/kegiatan/${kg.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statusBuka: !kg.statusBuka }),
+      });
+      if (res.ok) {
+        showToast(`Pendaftaran ${!kg.statusBuka ? "dibuka" : "ditutup"}`, "success");
+        fetchData();
+      } else {
+        showToast("Gagal mengubah status", "error");
+      }
+    } catch {
+      showToast("Gagal mengubah status", "error");
+    }
   };
 
   const getKomisariatNames = (ids: number[]) =>
@@ -381,7 +410,7 @@ export default function AdminKegiatanPage() {
                   <Pencil size={14} /> Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(kg.id)}
+                  onClick={() => setDeleteTarget(kg.id)}
                   className="inline-flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800 font-medium"
                 >
                   <Trash2 size={14} /> Hapus
@@ -391,6 +420,15 @@ export default function AdminKegiatanPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Hapus Kegiatan"
+        message="Yakin ingin menghapus kegiatan ini? Semua data peserta dan persyaratan terkait akan ikut terhapus."
+        variant="danger"
+        onConfirm={() => deleteTarget !== null && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

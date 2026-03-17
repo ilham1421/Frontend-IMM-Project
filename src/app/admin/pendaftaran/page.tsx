@@ -17,19 +17,25 @@ type Kegiatan = {
 export default function AdminPendaftaranPage() {
   const [kegiatanList, setKegiatanList] = useState<Kegiatan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    let user: { komisariat?: string } = {};
+    try { user = JSON.parse(localStorage.getItem("user") || "{}"); } catch { /* invalid JSON */ }
     const komisariat = user.komisariat || "";
     fetch(`/api/kegiatan?komisariat=${encodeURIComponent(komisariat)}`)
       .then((res) => res.json())
       .then((data) => setKegiatanList(data))
-      .catch(() => {})
+      .catch(() => setError("Gagal memuat data kegiatan."))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return <div className="p-6 text-imm-gray-dark">Memuat...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-600">{error}</div>;
   }
 
   return (

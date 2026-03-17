@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Download, Eye, Trash2, Filter, X, User, Mail, Phone, MapPin, GraduationCap, Calendar, FileText, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Search, Download, Eye, Trash2, Filter, X, User, Mail, Phone, MapPin, GraduationCap, Calendar, FileText, CheckCircle, Clock, XCircle, History } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Berkas = {
   namaBerkas: string;
@@ -18,6 +20,16 @@ type PesertaListItem = {
   komisariat: string;
   createdAt: string;
   status: "Terverifikasi" | "Menunggu" | "Ditolak";
+};
+
+type StatusLog = {
+  id: number;
+  statusLama: string;
+  statusBaru: string;
+  diubahOleh: string;
+  role: string;
+  waktu: string;
+  emailTerkirim: boolean;
 };
 
 type PesertaDetail = {
@@ -40,6 +52,7 @@ type PesertaDetail = {
   createdAt: string;
   updatedAt: string;
   berkas: Berkas[];
+  jawaban?: { persyaratanId: number; nama: string; jenis: string; nilai: string }[];
 };
 
 export default function ManajemenPesertaPage() {
@@ -50,6 +63,17 @@ export default function ManajemenPesertaPage() {
   const [selectedPeserta, setSelectedPeserta] = useState<PesertaDetail | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [statusLogs, setStatusLogs] = useState<StatusLog[]>([]);
+  const { showToast } = useToast();
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    variant: "danger" | "warning" | "default";
+    onConfirm: () => void;
+  }>({ open: false, title: "", message: "", variant: "default", onConfirm: () => {} });
 
   const fetchPeserta = () => {
     const params = new URLSearchParams();
@@ -59,7 +83,7 @@ export default function ManajemenPesertaPage() {
     authFetch(`/api/peserta?${params.toString()}`)
       .then((res) => res.ok ? res.json() : [])
       .then((data) => setPeserta(data))
-      .catch(() => {})
+      .catch(() => showToast("Gagal memuat data peserta", "error"))
       .finally(() => setLoading(false));
   };
 
@@ -72,32 +96,79 @@ export default function ManajemenPesertaPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus peserta ini?")) return;
-    await authFetch(`/api/peserta/${id}`, { method: "DELETE" });
-    fetchPeserta();
+  const handleDelete = (id: number) => {
+    setConfirmDialog({
+      open: true,
+      title: "Hapus Peserta",
+      message: "Yakin ingin menghapus peserta ini? Data yang dihapus tidak dapat dikembalikan.",
+      variant: "danger",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+        try {
+          const res = await authFetch(`/api/peserta/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            showToast("Peserta berhasil dihapus", "success");
+            fetchPeserta();
+          } else {
+            const data = await res.json();
+            showToast(data.error || "Gagal menghapus peserta", "error");
+          }
+        } catch {
+          showToast("Gagal menghapus peserta", "error");
+        }
+      },
+    });
   };
 
-  const handleStatusChange = async (id: number, status: string) => {
-    await authFetch(`/api/peserta/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+  const handleStatusChange = (id: number, newStatus: string) => {
+    const pesertaItem = peserta.find((p) => p.id === id);
+    if (!pesertaItem || pesertaItem.status === newStatus) return;
+
+    setConfirmDialog({
+      open: true,
+      title: "Ubah Status Peserta",
+      message: `Ubah status ${pesertaItem.namaLengkap} dari "${pesertaItem.status}" ke "${newStatus}"? Email notifikasi akan dikirim ke peserta.`,
+      variant: newStatus === "Ditolak" ? "danger" : "warning",
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+        try {
+          const res = await authFetch(`/api/peserta/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: newStatus }),
+          });
+          if (res.ok) {
+            showToast(`Status berhasil diubah ke ${newStatus}`, "success");
+            fetchPeserta();
+            if (selectedPeserta && selectedPeserta.id === id) {
+              setSelectedPeserta({ ...selectedPeserta, status: newStatus });
+              const logRes = await authFetch(`/api/peserta/${id}/logs`);
+              if (logRes.ok) setStatusLogs(await logRes.json());
+            }
+          } else {
+            const data = await res.json();
+            showToast(data.error || "Gagal mengubah status", "error");
+          }
+        } catch {
+          showToast("Gagal mengubah status", "error");
+        }
+      },
     });
-    fetchPeserta();
-    if (selectedPeserta && selectedPeserta.id === id) {
-      setSelectedPeserta({ ...selectedPeserta, status });
-    }
   };
 
   const handleViewDetail = async (id: number) => {
     setLoadingDetail(true);
     setShowModal(true);
     try {
-      const res = await authFetch(`/api/peserta/${id}`);
-      const data = await res.json();
-      setSelectedPeserta(data);
+      const [pesRes, logRes] = await Promise.all([
+        authFetch(`/api/peserta/${id}`),
+        authFetch(`/api/peserta/${id}/logs`),
+      ]);
+      if (!pesRes.ok) { showToast("Gagal memuat detail peserta", "error"); setShowModal(false); return; }
+      setSelectedPeserta(await pesRes.json());
+      setStatusLogs(logRes.ok ? await logRes.json() : []);
     } catch {
+      showToast("Gagal memuat detail peserta", "error");
       setSelectedPeserta(null);
     } finally {
       setLoadingDetail(false);
@@ -108,6 +179,25 @@ export default function ManajemenPesertaPage() {
     d ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-";
 
   const isImage = (filename: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
+
+  const handleExport = async () => {
+    const params = new URLSearchParams();
+    if (filterStatus !== "semua") params.set("status", filterStatus);
+    try {
+      const res = await authFetch(`/api/peserta/export/csv?${params.toString()}`);
+      if (!res.ok) { showToast("Gagal mengekspor data", "error"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `peserta-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Data berhasil diekspor", "success");
+    } catch {
+      showToast("Gagal mengekspor data", "error");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -141,9 +231,12 @@ export default function ManajemenPesertaPage() {
             <option value="Ditolak">Ditolak</option>
           </select>
         </div>
-        <button className="inline-flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-2.5 rounded-xl hover:bg-green-700 transition-colors text-sm">
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 bg-green-600 text-white font-semibold px-4 py-2.5 rounded-xl hover:bg-green-700 transition-colors text-sm"
+        >
           <Download size={16} />
-          Export
+          Export CSV
         </button>
       </div>
 
@@ -329,6 +422,24 @@ export default function ManajemenPesertaPage() {
                     </div>
                   </div>
 
+                  {/* Jawaban Persyaratan */}
+                  {selectedPeserta.jawaban && selectedPeserta.jawaban.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-bold text-imm-black mb-3 flex items-center gap-2">
+                        <FileText size={16} className="text-imm-red" />
+                        Jawaban Persyaratan
+                      </h3>
+                      <div className="space-y-3">
+                        {selectedPeserta.jawaban.map((j, i) => (
+                          <div key={i} className="bg-gray-50 rounded-xl px-4 py-3">
+                            <p className="text-xs text-imm-gray-dark font-medium mb-1">{j.nama}</p>
+                            <p className="text-sm text-imm-black whitespace-pre-wrap">{j.nilai}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Berkas */}
                   <div>
                     <h3 className="text-sm font-bold text-imm-black mb-3 flex items-center gap-2">
@@ -341,13 +452,16 @@ export default function ManajemenPesertaPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {selectedPeserta.berkas.map((b, i) => (
+                        {selectedPeserta.berkas.map((b, i) => {
+                          const tkn = typeof window !== "undefined" ? localStorage.getItem("token") : "";
+                          const fileUrl = `/uploads/${b.namaFile}?token=${tkn}`;
+                          return (
                           <div key={i} className="bg-gray-50 rounded-xl p-4">
                             <p className="text-xs text-imm-gray-dark mb-2 font-medium">{b.namaBerkas}</p>
                             {isImage(b.namaFile) ? (
                               <div className="mb-2">
                                 <img
-                                  src={`/uploads/${b.namaFile}`}
+                                  src={fileUrl}
                                   alt={b.namaBerkas}
                                   className="max-w-full max-h-64 rounded-lg border border-gray-200 object-contain"
                                 />
@@ -359,7 +473,7 @@ export default function ManajemenPesertaPage() {
                               </div>
                             )}
                             <a
-                              href={`/uploads/${b.namaFile}`}
+                              href={fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 text-xs font-semibold text-imm-red hover:underline"
@@ -368,7 +482,8 @@ export default function ManajemenPesertaPage() {
                               Download / Lihat File
                             </a>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -390,6 +505,48 @@ export default function ManajemenPesertaPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Riwayat Perubahan Status */}
+                  {statusLogs.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-bold text-imm-black mb-3 flex items-center gap-2">
+                        <History size={16} className="text-imm-red" />
+                        Riwayat Perubahan Status
+                      </h3>
+                      <div className="space-y-2">
+                        {statusLogs.map((log) => (
+                          <div key={log.id} className="bg-gray-50 rounded-xl px-4 py-3 flex items-start gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                              log.statusBaru === "Terverifikasi" ? "bg-green-100" : log.statusBaru === "Ditolak" ? "bg-red-100" : "bg-yellow-100"
+                            }`}>
+                              {log.statusBaru === "Terverifikasi" && <CheckCircle size={14} className="text-green-600" />}
+                              {log.statusBaru === "Ditolak" && <XCircle size={14} className="text-red-600" />}
+                              {log.statusBaru === "Menunggu" && <Clock size={14} className="text-yellow-600" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-imm-black">
+                                <span className="font-medium">{log.diubahOleh}</span>
+                                <span className="text-imm-gray-dark"> mengubah status dari </span>
+                                <span className="font-medium">{log.statusLama}</span>
+                                <span className="text-imm-gray-dark"> → </span>
+                                <span className="font-medium">{log.statusBaru}</span>
+                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-[11px] text-imm-gray-dark">
+                                  {new Date(log.waktu).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                                </p>
+                                {log.emailTerkirim && (
+                                  <span className="text-[11px] text-green-600 flex items-center gap-1">
+                                    <Mail size={10} /> Email terkirim
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Status Change */}
                   <div className="border-t border-gray-100 pt-4">
@@ -418,6 +575,15 @@ export default function ManajemenPesertaPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }

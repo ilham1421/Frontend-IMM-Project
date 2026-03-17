@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil, UserX, UserCheck } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type AdminPikom = {
   id: number;
@@ -15,17 +17,26 @@ type AdminPikom = {
 export default function ManajemenAdminPikomPage() {
   const [admins, setAdmins] = useState<AdminPikom[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+  const [komisariatList, setKomisariatList] = useState<{ id: number; nama: string }[]>([]);
+
+  // Confirm dialog for toggle aktif
+  const [toggleTarget, setToggleTarget] = useState<AdminPikom | null>(null);
 
   const fetchAdmins = () => {
     authFetch("/api/users")
       .then((res) => res.json())
       .then((data) => setAdmins(data))
-      .catch(() => {})
+      .catch(() => showToast("Gagal memuat data admin", "error"))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchAdmins();
+    fetch("/api/komisariat")
+      .then((res) => res.json())
+      .then((data) => setKomisariatList(data))
+      .catch(() => {});
   }, []);
 
   const [showForm, setShowForm] = useState(false);
@@ -33,29 +44,54 @@ export default function ManajemenAdminPikomPage() {
   const [formData, setFormData] = useState({ nama: "", username: "", komisariat: "", password: "" });
 
   const handleSave = async () => {
-    if (!formData.nama.trim() || !formData.username.trim()) return;
-    if (editId !== null) {
-      await authFetch(`/api/users/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nama: formData.nama,
-          username: formData.username,
-          komisariat: formData.komisariat,
-          ...(formData.password ? { password: formData.password } : {}),
-        }),
-      });
-      setEditId(null);
-    } else {
-      await authFetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    if (!formData.nama.trim() || !formData.username.trim()) {
+      showToast("Nama dan username wajib diisi", "warning");
+      return;
     }
-    setFormData({ nama: "", username: "", komisariat: "", password: "" });
-    setShowForm(false);
-    fetchAdmins();
+    try {
+      if (editId !== null) {
+        const res = await authFetch(`/api/users/${editId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nama: formData.nama,
+            username: formData.username,
+            komisariat: formData.komisariat,
+            ...(formData.password ? { password: formData.password } : {}),
+          }),
+        });
+        if (res.ok) {
+          showToast("Admin berhasil diperbarui", "success");
+        } else {
+          const data = await res.json();
+          showToast(data.error || "Gagal memperbarui admin", "error");
+          return;
+        }
+        setEditId(null);
+      } else {
+        if (!formData.password || formData.password.length < 6) {
+          showToast("Password minimal 6 karakter", "warning");
+          return;
+        }
+        const res = await authFetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+        if (res.ok) {
+          showToast("Admin berhasil ditambahkan", "success");
+        } else {
+          const data = await res.json();
+          showToast(data.error || "Gagal menambahkan admin", "error");
+          return;
+        }
+      }
+      setFormData({ nama: "", username: "", komisariat: "", password: "" });
+      setShowForm(false);
+      fetchAdmins();
+    } catch {
+      showToast("Terjadi kesalahan", "error");
+    }
   };
 
   const handleEdit = (admin: AdminPikom) => {
@@ -64,15 +100,23 @@ export default function ManajemenAdminPikomPage() {
     setShowForm(true);
   };
 
-  const toggleAktif = async (id: number) => {
-    const admin = admins.find((a) => a.id === id);
-    if (!admin) return;
-    await authFetch(`/api/users/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ aktif: !admin.aktif }),
-    });
-    fetchAdmins();
+  const toggleAktif = async (admin: AdminPikom) => {
+    setToggleTarget(null);
+    try {
+      const res = await authFetch(`/api/users/${admin.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aktif: !admin.aktif }),
+      });
+      if (res.ok) {
+        showToast(`Admin ${admin.aktif ? "dinonaktifkan" : "diaktifkan"}`, "success");
+        fetchAdmins();
+      } else {
+        showToast("Gagal mengubah status admin", "error");
+      }
+    } catch {
+      showToast("Gagal mengubah status admin", "error");
+    }
   };
 
   if (loading) {
@@ -126,12 +170,16 @@ export default function ManajemenAdminPikomPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-imm-black mb-1">Komisariat</label>
-              <input
-                type="text"
+              <select
                 value={formData.komisariat}
                 onChange={(e) => setFormData({ ...formData, komisariat: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
-              />
+              >
+                <option value="">Pilih Komisariat</option>
+                {komisariatList.map((k) => (
+                  <option key={k.id} value={k.nama}>{k.nama}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-imm-black mb-1">
@@ -192,7 +240,7 @@ export default function ManajemenAdminPikomPage() {
                 Edit
               </button>
               <button
-                onClick={() => toggleAktif(admin.id)}
+                onClick={() => setToggleTarget(admin)}
                 className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg transition-colors ${
                   admin.aktif ? "text-red-600 hover:bg-red-50" : "text-green-600 hover:bg-green-50"
                 }`}
@@ -203,6 +251,15 @@ export default function ManajemenAdminPikomPage() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={toggleTarget !== null}
+        title={toggleTarget?.aktif ? "Nonaktifkan Admin" : "Aktifkan Admin"}
+        message={toggleTarget ? `Yakin ingin ${toggleTarget.aktif ? "menonaktifkan" : "mengaktifkan"} admin "${toggleTarget.nama}"?` : ""}
+        variant={toggleTarget?.aktif ? "danger" : "default"}
+        onConfirm={() => toggleTarget && toggleAktif(toggleTarget)}
+        onCancel={() => setToggleTarget(null)}
+      />
     </div>
   );
 }

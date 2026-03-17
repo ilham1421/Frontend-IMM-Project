@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/components/Toast";
 import { ClipboardList, Upload, XCircle, Building2, CheckCircle2, ArrowRight, CalendarRange, FileCheck } from "lucide-react";
 
 type Kegiatan = {
@@ -25,8 +26,9 @@ type Komisariat = {
 type PersyaratanItem = {
   id: number;
   nama: string;
-  jenis: "file" | "teks" | "checkbox";
+  jenis: "file" | "teks" | "checkbox" | "paragraf" | "pilihan_ganda";
   wajib: boolean;
+  opsi?: string[];
 };
 
 type FormData = {
@@ -46,8 +48,17 @@ type FormData = {
 };
 
 export default function PendaftaranPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><p className="text-imm-gray-dark">Memuat...</p></div>}>
+      <PendaftaranContent />
+    </Suspense>
+  );
+}
+
+function PendaftaranContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   const [kegiatanList, setKegiatanList] = useState<Kegiatan[]>([]);
   const [allKomisariat, setAllKomisariat] = useState<Komisariat[]>([]);
@@ -161,6 +172,7 @@ export default function PendaftaranPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [persyaratanAnswers, setPersyaratanAnswers] = useState<{ [key: string]: string }>({});
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -196,6 +208,20 @@ export default function PendaftaranPage() {
         }
       });
 
+      // Append non-file persyaratan answers
+      const jawaban = persyaratanList
+        .filter((p) => p.jenis !== "file")
+        .map((p) => ({
+          persyaratanId: p.id,
+          nama: p.nama,
+          jenis: p.jenis,
+          nilai: persyaratanAnswers[`persyaratan_${p.id}`] || "",
+        }))
+        .filter((j) => j.nilai);
+      if (jawaban.length > 0) {
+        fd.append("jawaban", JSON.stringify(jawaban));
+      }
+
       const res = await fetch("/api/peserta", {
         method: "POST",
         body: fd,
@@ -206,11 +232,11 @@ export default function PendaftaranPage() {
       if (res.ok) {
         router.push(`/sukses?no=${data.noPendaftaran}`);
       } else {
-        alert(data.error || "Gagal mengirim pendaftaran");
+        showToast(data.error || "Gagal mengirim pendaftaran", "error");
         setSubmitting(false);
       }
     } catch {
-      alert("Terjadi kesalahan. Coba lagi.");
+      showToast("Terjadi kesalahan. Coba lagi.", "error");
       setSubmitting(false);
     }
   };
@@ -594,18 +620,46 @@ export default function PendaftaranPage() {
                         </div>
                       )}
                       {item.jenis === "teks" && (
+                        <input
+                          type="text"
+                          value={persyaratanAnswers[`persyaratan_${item.id}`] || ""}
+                          onChange={(e) => setPersyaratanAnswers({ ...persyaratanAnswers, [`persyaratan_${item.id}`]: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
+                          placeholder={`Tulis ${item.nama.toLowerCase()}`}
+                        />
+                      )}
+                      {item.jenis === "paragraf" && (
                         <textarea
-                          name={`persyaratan_${item.id}`}
+                          value={persyaratanAnswers[`persyaratan_${item.id}`] || ""}
+                          onChange={(e) => setPersyaratanAnswers({ ...persyaratanAnswers, [`persyaratan_${item.id}`]: e.target.value })}
                           rows={3}
                           className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none resize-none"
                           placeholder={`Tulis ${item.nama.toLowerCase()}`}
                         />
                       )}
+                      {item.jenis === "pilihan_ganda" && item.opsi && (
+                        <div className="space-y-2">
+                          {item.opsi.map((opsi, idx) => (
+                            <label key={idx} className="flex items-center gap-2 text-sm text-imm-gray-dark cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`persyaratan_${item.id}`}
+                                value={opsi}
+                                checked={persyaratanAnswers[`persyaratan_${item.id}`] === opsi}
+                                onChange={(e) => setPersyaratanAnswers({ ...persyaratanAnswers, [`persyaratan_${item.id}`]: e.target.value })}
+                                className="w-4 h-4 accent-imm-red"
+                              />
+                              {opsi}
+                            </label>
+                          ))}
+                        </div>
+                      )}
                       {item.jenis === "checkbox" && (
                         <label className="flex items-center gap-2 text-sm text-imm-gray-dark cursor-pointer">
                           <input
                             type="checkbox"
-                            name={`persyaratan_${item.id}`}
+                            checked={persyaratanAnswers[`persyaratan_${item.id}`] === "Ya"}
+                            onChange={(e) => setPersyaratanAnswers({ ...persyaratanAnswers, [`persyaratan_${item.id}`]: e.target.checked ? "Ya" : "" })}
                             className="w-4 h-4 accent-imm-red"
                           />
                           {item.nama}

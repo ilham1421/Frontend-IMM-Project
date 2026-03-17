@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, GripVertical, CalendarRange } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Kegiatan = {
   id: number;
@@ -14,8 +16,9 @@ type Persyaratan = {
   id: number;
   kegiatanId: number;
   nama: string;
-  jenis: "file" | "teks" | "checkbox";
+  jenis: "file" | "teks" | "checkbox" | "paragraf" | "pilihan_ganda";
   wajib: boolean;
+  opsi?: string[];
 };
 
 export default function ManajemenPersyaratanPage() {
@@ -23,6 +26,8 @@ export default function ManajemenPersyaratanPage() {
   const [selectedKegiatan, setSelectedKegiatan] = useState<number | null>(null);
   const [items, setItems] = useState<Persyaratan[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/kegiatan")
@@ -31,7 +36,7 @@ export default function ManajemenPersyaratanPage() {
         setKegiatanList(data);
         if (data.length > 0) setSelectedKegiatan(data[0].id);
       })
-      .catch(() => {})
+      .catch(() => showToast("Gagal memuat data kegiatan", "error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,7 +45,7 @@ export default function ManajemenPersyaratanPage() {
     fetch(`/api/persyaratan?kegiatanId=${selectedKegiatan}`)
       .then((res) => res.json())
       .then((data) => setItems(data))
-      .catch(() => {});
+      .catch(() => showToast("Gagal memuat persyaratan", "error"));
   };
 
   useEffect(() => {
@@ -49,39 +54,78 @@ export default function ManajemenPersyaratanPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ nama: "", jenis: "file" as Persyaratan["jenis"], wajib: true });
+  const [formData, setFormData] = useState({ nama: "", jenis: "file" as Persyaratan["jenis"], wajib: true, opsi: "" });
 
   const handleAdd = async () => {
-    if (!formData.nama.trim() || !selectedKegiatan) return;
-    if (editId !== null) {
-      const res = await authFetch(`/api/persyaratan/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) fetchPersyaratan();
-      setEditId(null);
-    } else {
-      const res = await authFetch("/api/persyaratan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, kegiatanId: selectedKegiatan }),
-      });
-      if (res.ok) fetchPersyaratan();
+    if (!formData.nama.trim() || !selectedKegiatan) {
+      showToast("Nama persyaratan wajib diisi", "warning");
+      return;
     }
-    setFormData({ nama: "", jenis: "file", wajib: true });
-    setShowForm(false);
+    try {
+      if (editId !== null) {
+        const payload: Record<string, unknown> = { nama: formData.nama, jenis: formData.jenis, wajib: formData.wajib };
+        if (formData.jenis === "pilihan_ganda") {
+          payload.opsi = formData.opsi.split("\n").map((o) => o.trim()).filter(Boolean);
+        } else {
+          payload.opsi = undefined;
+        }
+        const res = await authFetch(`/api/persyaratan/${editId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          showToast("Persyaratan berhasil diperbarui", "success");
+          fetchPersyaratan();
+        } else {
+          showToast("Gagal memperbarui persyaratan", "error");
+        }
+        setEditId(null);
+      } else {
+        const payload: Record<string, unknown> = { ...formData, kegiatanId: selectedKegiatan };
+        if (formData.jenis === "pilihan_ganda") {
+          payload.opsi = formData.opsi.split("\n").map((o: string) => o.trim()).filter(Boolean);
+        } else {
+          delete payload.opsi;
+        }
+        const res = await authFetch("/api/persyaratan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          showToast("Persyaratan berhasil ditambahkan", "success");
+          fetchPersyaratan();
+        } else {
+          showToast("Gagal menambahkan persyaratan", "error");
+        }
+      }
+      setFormData({ nama: "", jenis: "file", wajib: true, opsi: "" });
+      setShowForm(false);
+    } catch {
+      showToast("Terjadi kesalahan", "error");
+    }
   };
 
   const handleEdit = (item: Persyaratan) => {
-    setFormData({ nama: item.nama, jenis: item.jenis, wajib: item.wajib });
+    setFormData({ nama: item.nama, jenis: item.jenis, wajib: item.wajib, opsi: item.opsi?.join("\n") || "" });
     setEditId(item.id);
     setShowForm(true);
   };
 
   const handleDelete = async (id: number) => {
-    await authFetch(`/api/persyaratan/${id}`, { method: "DELETE" });
-    fetchPersyaratan();
+    setDeleteTarget(null);
+    try {
+      const res = await authFetch(`/api/persyaratan/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showToast("Persyaratan berhasil dihapus", "success");
+        fetchPersyaratan();
+      } else {
+        showToast("Gagal menghapus persyaratan", "error");
+      }
+    } catch {
+      showToast("Gagal menghapus persyaratan", "error");
+    }
   };
 
   if (loading) {
@@ -100,7 +144,7 @@ export default function ManajemenPersyaratanPage() {
             onClick={() => {
               setShowForm(true);
               setEditId(null);
-              setFormData({ nama: "", jenis: "file", wajib: true });
+              setFormData({ nama: "", jenis: "file", wajib: true, opsi: "" });
             }}
             className="inline-flex items-center gap-2 bg-imm-red text-white font-semibold px-4 py-2.5 rounded-xl hover:bg-imm-red-dark transition-colors text-sm"
           >
@@ -158,8 +202,10 @@ export default function ManajemenPersyaratanPage() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
               >
                 <option value="file">File Upload</option>
-                <option value="teks">Teks</option>
-                <option value="checkbox">Checkbox</option>
+                <option value="teks">Jawaban Singkat</option>
+                <option value="paragraf">Paragraf</option>
+                <option value="pilihan_ganda">Pilihan Ganda</option>
+                <option value="checkbox">Kotak Centang</option>
               </select>
             </div>
             <div>
@@ -174,6 +220,18 @@ export default function ManajemenPersyaratanPage() {
               </select>
             </div>
           </div>
+          {formData.jenis === "pilihan_ganda" && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-imm-black mb-1">Opsi Pilihan (satu per baris)</label>
+              <textarea
+                value={formData.opsi}
+                onChange={(e) => setFormData({ ...formData, opsi: e.target.value })}
+                rows={4}
+                placeholder={"Opsi 1\nOpsi 2\nOpsi 3"}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-imm-red focus:border-transparent outline-none"
+              />
+            </div>
+          )}
           <div className="flex gap-3 mt-4">
             <button
               onClick={handleAdd}
@@ -211,7 +269,7 @@ export default function ManajemenPersyaratanPage() {
                       <p className="font-medium text-imm-black text-sm">{item.nama}</p>
                       <div className="flex gap-2 mt-1">
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                          {item.jenis === "file" ? "File" : item.jenis === "teks" ? "Teks" : "Checkbox"}
+                          {item.jenis === "file" ? "File" : item.jenis === "teks" ? "Jawaban Singkat" : item.jenis === "paragraf" ? "Paragraf" : item.jenis === "pilihan_ganda" ? "Pilihan Ganda" : "Kotak Centang"}
                         </span>
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full ${
@@ -232,7 +290,7 @@ export default function ManajemenPersyaratanPage() {
                       <Pencil size={16} />
                     </button>
                     <button
-                      onClick={() => handleDelete(item.id)}
+                      onClick={() => setDeleteTarget(item.id)}
                       className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors"
                       aria-label="Hapus"
                     >
@@ -245,6 +303,15 @@ export default function ManajemenPersyaratanPage() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Hapus Persyaratan"
+        message="Apakah Anda yakin ingin menghapus persyaratan ini? Tindakan ini tidak dapat dibatalkan."
+        variant="danger"
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

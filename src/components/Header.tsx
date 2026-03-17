@@ -2,14 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
+
   return (
-    <header className="bg-imm-red text-white shadow-lg sticky top-0 z-50">
+    <header className="bg-imm-red text-white shadow-lg sticky top-0 z-50 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Title */}
@@ -31,6 +40,9 @@ export default function Header() {
             </Link>
             <Link href="/pendaftaran" className="hover:text-imm-yellow-light transition-colors">
               Pendaftaran
+            </Link>
+            <Link href="/cek-status" className="hover:text-imm-yellow-light transition-colors">
+              Cek Status
             </Link>
             <Link
               href="/login"
@@ -61,6 +73,9 @@ export default function Header() {
             </Link>
             <Link href="/pendaftaran" onClick={() => setMenuOpen(false)} className="hover:text-imm-yellow-light">
               Pendaftaran
+            </Link>
+            <Link href="/cek-status" onClick={() => setMenuOpen(false)} className="hover:text-imm-yellow-light">
+              Cek Status
             </Link>
             <Link
               href="/login"

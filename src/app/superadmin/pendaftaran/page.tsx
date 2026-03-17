@@ -18,17 +18,22 @@ type Kegiatan = {
 export default function ManajemenPendaftaranPage() {
   const [kegiatanList, setKegiatanList] = useState<Kegiatan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/kegiatan")
       .then((res) => res.json())
       .then((data) => setKegiatanList(data))
-      .catch(() => {})
+      .catch(() => setError("Gagal memuat data kegiatan."))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return <div className="p-6 text-imm-gray-dark">Memuat...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-600">{error}</div>;
   }
 
   return (

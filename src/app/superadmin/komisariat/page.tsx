@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Building2 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Komisariat = {
   id: number;
@@ -14,12 +16,14 @@ export default function ManajemenKomisariatPage() {
   const [loading, setLoading] = useState(true);
   const [namaKomisariat, setNamaKomisariat] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const { showToast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   const fetchKomisariat = () => {
     fetch("/api/komisariat")
       .then((res) => res.json())
       .then((data) => setKomisariat(data))
-      .catch(() => {})
+      .catch(() => showToast("Gagal memuat data komisariat", "error"))
       .finally(() => setLoading(false));
   };
 
@@ -29,25 +33,40 @@ export default function ManajemenKomisariatPage() {
 
   const handleAdd = async () => {
     if (!namaKomisariat.trim()) return;
-    const res = await authFetch("/api/komisariat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nama: namaKomisariat.trim() }),
-    });
-    if (res.ok) {
-      setNamaKomisariat("");
-      setShowForm(false);
-      fetchKomisariat();
-    } else {
-      const data = await res.json();
-      alert(data.error || "Gagal menambahkan");
+    try {
+      const res = await authFetch("/api/komisariat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama: namaKomisariat.trim() }),
+      });
+      if (res.ok) {
+        setNamaKomisariat("");
+        setShowForm(false);
+        showToast("Komisariat berhasil ditambahkan", "success");
+        fetchKomisariat();
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Gagal menambahkan komisariat", "error");
+      }
+    } catch {
+      showToast("Gagal menambahkan komisariat", "error");
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus komisariat ini?")) return;
-    await authFetch(`/api/komisariat/${id}`, { method: "DELETE" });
-    fetchKomisariat();
+    setDeleteTarget(null);
+    try {
+      const res = await authFetch(`/api/komisariat/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showToast("Komisariat berhasil dihapus", "success");
+        fetchKomisariat();
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Gagal menghapus komisariat", "error");
+      }
+    } catch {
+      showToast("Gagal menghapus komisariat", "error");
+    }
   };
 
   if (loading) {
@@ -134,7 +153,7 @@ export default function ManajemenKomisariatPage() {
                 </td>
                 <td className="px-6 py-4 text-center">
                   <button
-                    onClick={() => handleDelete(k.id)}
+                    onClick={() => setDeleteTarget(k.id)}
                     className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     <Trash2 size={14} />
@@ -153,6 +172,15 @@ export default function ManajemenKomisariatPage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Hapus Komisariat"
+        message="Yakin ingin menghapus komisariat ini? Data yang terkait mungkin terpengaruh."
+        variant="danger"
+        onConfirm={() => deleteTarget !== null && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
