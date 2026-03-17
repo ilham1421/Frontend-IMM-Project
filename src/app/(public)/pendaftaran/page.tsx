@@ -269,7 +269,7 @@ function PendaftaranContent() {
   if (step === "select") {
     return (
       <div>
-        <section className="bg-gradient-to-r from-imm-red to-imm-red-dark text-white py-12">
+        <section className="bg-linear-to-r from-imm-red to-imm-red-dark text-white py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <CalendarRange size={48} className="mx-auto mb-4 text-imm-yellow" />
             <h1 className="text-3xl font-bold mb-2">Pilih Kegiatan</h1>
@@ -312,7 +312,7 @@ function PendaftaranContent() {
 
     return (
       <div>
-        <section className="bg-gradient-to-r from-imm-red to-imm-red-dark text-white py-12">
+        <section className="bg-linear-to-r from-imm-red to-imm-red-dark text-white py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <Building2 size={48} className="mx-auto mb-4 text-imm-yellow" />
             <h1 className="text-3xl font-bold mb-2">Cek Komisariat</h1>
@@ -398,7 +398,7 @@ function PendaftaranContent() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-r from-imm-red to-imm-red-dark text-white py-12">
+      <section className="bg-linear-to-r from-imm-red to-imm-red-dark text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <ClipboardList size={48} className="mx-auto mb-4 text-imm-yellow" />
           <h1 className="text-3xl font-bold mb-2">Formulir Pendaftaran</h1>

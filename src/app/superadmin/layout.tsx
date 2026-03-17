@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import LayoutSkeleton from "@/components/LayoutSkeleton";
 
 export default function SuperadminLayout({
   children,
@@ -34,11 +35,7 @@ export default function SuperadminLayout({
   }, [router]);
 
   if (!authorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-imm-gray">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-imm-red"></div>
-      </div>
-    );
+    return <LayoutSkeleton />;
   }
 
   return (

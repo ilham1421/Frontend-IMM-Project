@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   Users,
   ClipboardList,
-  FileCheck,
   ArrowRight,
   CalendarRange,
   Activity,
@@ -14,6 +13,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 
 type Kegiatan = {
   id: number;
@@ -58,11 +58,14 @@ export default function SuperadminDashboard() {
   };
 
   useEffect(() => {
-    fetch("/api/kegiatan")
-      .then((res) => res.json())
-      .then((list) => setKegiatanList(list))
-      .catch(() => {});
-    fetchStats();
+    // Parallel fetch for faster initial load
+    Promise.all([
+      fetch("/api/kegiatan").then((r) => r.json()).catch(() => []),
+      authFetch("/api/dashboard/stats").then((r) => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([list, stats]) => {
+      setKegiatanList(list);
+      if (stats) setData(stats);
+    });
   }, []);
 
   const handleFilterChange = (value: string) => {
@@ -71,14 +74,7 @@ export default function SuperadminDashboard() {
   };
 
   if (!data) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-imm-gray-dark">
-          <div className="w-5 h-5 border-2 border-imm-red border-t-transparent rounded-full animate-spin" />
-          Memuat dashboard...
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const maxKomisariatTotal = Math.max(...(data.komisariatStats?.map((k) => k.total) ?? []), 1);
@@ -89,7 +85,7 @@ export default function SuperadminDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-imm-red via-imm-red-dark to-red-900 rounded-2xl p-6 sm:p-8 text-white">
+      <div className="relative overflow-hidden bg-linear-to-br from-imm-red via-imm-red-dark to-red-900 rounded-2xl p-6 sm:p-8 text-white">
         <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -translate-y-1/3 translate-x-1/3" />
         <div className="absolute bottom-0 left-1/2 w-40 h-40 bg-white/5 rounded-full translate-y-1/2" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -123,7 +119,7 @@ export default function SuperadminDashboard() {
           { label: "Ditolak", value: data.ditolak, icon: UserX, gradient: "from-rose-500 to-rose-600" },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-3 shadow-sm`}>
+            <div className={`w-11 h-11 rounded-xl bg-linear-to-br ${stat.gradient} flex items-center justify-center mb-3 shadow-sm`}>
               <stat.icon size={20} className="text-white" />
             </div>
             <p className="text-3xl font-extrabold text-imm-black tracking-tight">{stat.value}</p>
@@ -133,11 +129,11 @@ export default function SuperadminDashboard() {
       </div>
 
       {/* Kegiatan Summary + Komisariat Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 content-auto">
         {/* Kegiatan Summary */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-sm">
               <CalendarRange size={20} className="text-white" />
             </div>
             <div>
@@ -180,7 +176,7 @@ export default function SuperadminDashboard() {
         {/* Komisariat Bar Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-sm">
               <BarChart3 size={20} className="text-white" />
             </div>
             <div>
@@ -249,7 +245,7 @@ export default function SuperadminDashboard() {
       </div>
 
       {/* Pendaftar Terbaru */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden content-auto">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-imm-black">Pendaftar Terbaru</h3>
@@ -279,7 +275,7 @@ export default function SuperadminDashboard() {
                   <tr key={i} className="hover:bg-imm-gray/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-imm-red to-imm-red-dark flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-linear-to-br from-imm-red to-imm-red-dark flex items-center justify-center text-white text-xs font-bold">
                           {r.nama.charAt(0).toUpperCase()}
                         </div>
                         <span className="font-medium text-imm-black">{r.nama}</span>

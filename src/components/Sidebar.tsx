@@ -92,7 +92,7 @@ export default function Sidebar({
       {/* Brand Header */}
       <div className={`px-4 py-5 border-b border-white/6 flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
         <div className="w-9 h-9 rounded-xl bg-imm-red flex items-center justify-center shrink-0 shadow-lg shadow-imm-red/20">
-          <Image src="/logo-IMM.png" alt="IMM" width={22} height={22} className="object-contain" />
+          <Image src="/logo-IMM.png" alt="IMM" width={22} height={22} className="object-contain" priority />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">

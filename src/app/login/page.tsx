@@ -49,11 +49,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-imm-red via-imm-red-dark to-imm-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-imm-red via-imm-red-dark to-imm-black flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Image src="/logo-IMM.png" alt="Logo IMM" width={64} height={64} className="w-16 h-16 object-contain mx-auto mb-4" />
+          <Image src="/logo-IMM.png" alt="Logo IMM" width={64} height={64} className="w-16 h-16 object-contain mx-auto mb-4" priority />
           <h1 className="text-2xl font-bold text-white">Login Admin</h1>
           <p className="text-white/60 text-sm mt-1">
             Masuk ke panel administrasi

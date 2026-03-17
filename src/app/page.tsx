@@ -59,12 +59,12 @@ export default function HomePage() {
       <Header />
       <div>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-imm-red via-imm-red-dark to-imm-black text-white min-h-[85vh] flex items-center">
+      <section className="relative overflow-hidden bg-linear-to-br from-imm-red via-imm-red-dark to-imm-black text-white min-h-[85vh] flex items-center">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 left-10 w-72 h-72 bg-imm-yellow/10 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-imm-red-light/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-imm-red-light/10 rounded-full blur-3xl" />
           {/* Grid pattern */}
           <div className="absolute inset-0 opacity-[0.03]" style={{
             backgroundImage: "linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)",
@@ -148,8 +148,8 @@ export default function HomePage() {
             <div className="hidden lg:flex justify-center">
               <div className="relative w-80">
                 {/* Background cards */}
-                <div className="absolute top-6 -left-4 w-full h-72 bg-white/5 backdrop-blur rounded-3xl rotate-[-6deg] border border-white/10" />
-                <div className="absolute top-3 -left-2 w-full h-72 bg-white/10 backdrop-blur rounded-3xl rotate-[-3deg] border border-white/10" />
+                <div className="absolute top-6 -left-4 w-full h-72 bg-white/5 backdrop-blur rounded-3xl -rotate-6 border border-white/10" />
+                <div className="absolute top-3 -left-2 w-full h-72 bg-white/10 backdrop-blur rounded-3xl -rotate-3 border border-white/10" />
                 {/* Main card */}
                 <div className="relative w-full bg-white/15 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl">
                   <div className="flex justify-center mb-6">
@@ -220,7 +220,7 @@ export default function HomePage() {
               },
             ].map((item, i) => (
               <div key={i} className="group relative bg-white rounded-3xl p-8 border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300">
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${item.color} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                   <item.icon size={24} className="text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-imm-black mb-3">{item.title}</h3>
@@ -259,7 +259,7 @@ export default function HomePage() {
                 return (
                   <div key={k.singkatan} className="group bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-gray-200">
                     {/* Color stripe */}
-                    <div className={`h-1.5 ${isOpen ? "bg-gradient-to-r from-imm-red to-imm-yellow" : "bg-gray-300"}`} />
+                    <div className={`h-1.5 ${isOpen ? "bg-linear-to-r from-imm-red to-imm-yellow" : "bg-gray-300"}`} />
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-bold bg-imm-red text-white px-4 py-1.5 rounded-xl shadow-sm">{k.singkatan}</span>
@@ -432,7 +432,7 @@ export default function HomePage() {
                 <div className="absolute top-0 right-0 w-20 h-20 opacity-5">
                   <span className="text-8xl font-black text-imm-black">{item.level}</span>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-5 shadow-lg`}>
+                <div className={`w-12 h-12 rounded-2xl bg-linear-to-br ${item.color} flex items-center justify-center mb-5 shadow-lg`}>
                   <span className="text-white text-lg font-extrabold">{item.level}</span>
                 </div>
                 <div className="inline-flex items-center gap-2 mb-3">
@@ -448,7 +448,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-imm-red via-imm-red-dark to-red-900" />
+        <div className="absolute inset-0 bg-linear-to-br from-imm-red via-imm-red-dark to-red-900" />
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-imm-yellow/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl" />

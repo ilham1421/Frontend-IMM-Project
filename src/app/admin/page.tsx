@@ -14,6 +14,7 @@ import {
   UserX,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 
 type KegiatanInfo = {
   statusBuka: boolean;
@@ -77,14 +78,7 @@ export default function AdminDashboard() {
   }, [komisariat, selectedKegiatanId]);
 
   if (!data) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-imm-gray-dark">
-          <div className="w-5 h-5 border-2 border-imm-red border-t-transparent rounded-full animate-spin" />
-          Memuat dashboard...
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const totalCapacity = data.kegiatan?.kuotaPeserta || 0;
@@ -100,7 +94,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-imm-red via-imm-red-dark to-red-900 rounded-2xl p-6 sm:p-8 text-white">
+      <div className="relative overflow-hidden bg-linear-to-br from-imm-red via-imm-red-dark to-red-900 rounded-2xl p-6 sm:p-8 text-white">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
         <div className="relative z-10">
@@ -139,7 +133,7 @@ export default function AdminDashboard() {
           { label: "Ditolak", value: data.ditolak, icon: UserX, gradient: "from-rose-500 to-rose-600", bg: "bg-rose-50" },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-3 shadow-sm`}>
+            <div className={`w-11 h-11 rounded-xl bg-linear-to-br ${stat.gradient} flex items-center justify-center mb-3 shadow-sm`}>
               <stat.icon size={20} className="text-white" />
             </div>
             <p className="text-3xl font-extrabold text-imm-black tracking-tight">{stat.value}</p>
@@ -240,7 +234,7 @@ export default function AdminDashboard() {
 
             {/* Countdown */}
             {daysLeft !== null && data.kegiatan.statusBuka && (
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-100">
+              <div className="bg-linear-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-100">
                 <h4 className="text-sm font-bold text-amber-900 mb-2">Sisa Waktu Pendaftaran</h4>
                 <div className="text-center">
                   <span className="text-4xl font-extrabold text-amber-600">{daysLeft}</span>
@@ -282,7 +276,7 @@ export default function AdminDashboard() {
                   <tr key={i} className="hover:bg-imm-gray/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-imm-red to-imm-red-dark flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-linear-to-br from-imm-red to-imm-red-dark flex items-center justify-center text-white text-xs font-bold">
                           {p.nama.charAt(0).toUpperCase()}
                         </div>
                         <span className="font-medium text-imm-black">{p.nama}</span>

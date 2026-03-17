@@ -23,7 +23,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo & Title */}
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo-IMM.png" alt="Logo IMM" width={40} height={40} className="w-10 h-10 object-contain" />
+            <Image src="/logo-IMM.png" alt="Logo IMM" width={40} height={40} className="w-10 h-10 object-contain" priority />
             <div>
               <h1 className="text-lg font-bold leading-tight">Perkaderan IMM</h1>
               <p className="text-xs text-white/80">Ikatan Mahasiswa Muhammadiyah</p>

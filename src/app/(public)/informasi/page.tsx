@@ -11,7 +11,7 @@ export default function InformasiPage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-r from-imm-red to-imm-red-dark text-white py-16">
+      <section className="bg-linear-to-r from-imm-red to-imm-red-dark text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <BookOpen size={48} className="mx-auto mb-4 text-imm-yellow" />
           <h1 className="text-4xl font-bold mb-4">Informasi Perkaderan</h1>

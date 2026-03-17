@@ -20,6 +20,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Optimize below-fold rendering */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
